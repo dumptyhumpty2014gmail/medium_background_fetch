@@ -1,4 +1,5 @@
 import 'package:background_fetch/background_fetch.dart';
+import 'package:medium_background_fetch/task_function.dart';
 import '/log_functions.dart';
 import '/second_page.dart';
 import 'package:flutter/material.dart';
@@ -53,8 +54,10 @@ class _FirstPageState extends State<FirstPage> {
 
   void fetchFunctionFirst(String taskId) {
     final timestamp = DateTime.now();
+    final _myTaskConfig = MyTaskConfig.getTaskConfig(taskId);
     if (mounted) {
       LogManager.writeEventInLog("$taskId@$timestamp [НА ЭКРАНЕ 1]");
+
       setState(() {
         _events.insert(0, "$taskId@${timestamp.toString()}  [НА ЭКРАНЕ 1 SET]");
       });
@@ -68,28 +71,27 @@ class _FirstPageState extends State<FirstPage> {
     if (taskId == 'flutter_background_fetch') {
       return;
     }
-
-    BackgroundFetch.scheduleTask(TaskConfig(
-        taskId: taskId,
-        delay: taskDelay, //const для экспериментов
-        periodic: false,
-        forceAlarmManager: true,
-        stopOnTerminate: setStopOnTerminate,
-        enableHeadless: setEnableHeadless,
-        requiresNetworkConnectivity: true,
-        requiresCharging: true));
+    if (DateTime.now().difference(_myTaskConfig.endDateTime).inSeconds >= 0) {
+      //не запускаем новую задачу
+      return;
+    }
+    startNewTask(taskId, taskDelay);
   }
 
-  void _startSheduleTask1() {
-    BackgroundFetch.scheduleTask(TaskConfig(
-        taskId: '1111',
-        delay: taskDelay, //const для экспериментов
-        periodic: false, //обязательно не периодическую
-        forceAlarmManager: true,
-        stopOnTerminate: setStopOnTerminate,
-        enableHeadless: setEnableHeadless,
-        requiresNetworkConnectivity: true,
-        requiresCharging: true));
+  void _startSheduleTask1(BuildContext context) async {
+    //прежде, чем запустить задачу, открываем форму, в которой выбираем период выполнения и лимит времени
+    cupertinoGetTaskIdDialog(context, TaskIds.firstPageKey).then((value) {
+      //print(value);
+      if (value != null) {
+        final myTaskConfig = MyTaskConfig.getTaskConfig(value);
+        //print(value);
+        //TODO записываем в хранилище (это потом)
+        startNewTask(value, myTaskConfig.period);
+      }
+    }).catchError((error) {
+      //TODO выдаем сообщение, что произошла какая-то ошибка и не смогли запустить
+      //print(error);
+    });
   }
 
   void _stopTasks() {
@@ -121,7 +123,9 @@ class _FirstPageState extends State<FirstPage> {
       body: Column(
         children: [
           ElevatedButton(
-            onPressed: _startSheduleTask1,
+            onPressed: () {
+              _startSheduleTask1(context);
+            },
             child: const Text('Запустить задачу'),
           ),
           ElevatedButton(

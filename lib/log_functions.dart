@@ -1,10 +1,13 @@
 import 'dart:convert';
+import 'package:intl/intl.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
 const String logKey = 'log_key';
 const int taskDelay = 15000;
 const int taskDelay2 = 20000;
+final DateFormat formater = DateFormat("yy.MM.dd.HH.mm.ss");
+const String preSuffixTask = 'com.dh.task1';
 
 abstract class LogManager {
   static void writeEventInLog(String event) async {
