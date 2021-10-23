@@ -20,6 +20,7 @@ abstract class TaskIds {
 void backgroundFetchFunction(HeadlessTask task) {
   final taskId = task.taskId;
   final timeout = task.timeout;
+  //final _myTaskConfig = MyTaskConfig.getTaskConfig(taskId);
 
   final timestamp = DateTime.now();
   //print('111111');
@@ -32,9 +33,9 @@ void backgroundFetchFunction(HeadlessTask task) {
   if (timeout || taskId == 'flutter_background_fetch') {
     return;
   }
-  //TODO определяем время окончания. Если меньше, то запускаем новую задачу
-  //TODO определяем периодичность для запуска
-  startNewTask(taskId, taskDelay);
+  //TOD определяем время окончания. Если меньше, то запускаем новую задачу
+  //TOD определяем периодичность для запуска
+  checkIdAndStart(taskId);
 }
 
 //запускаем задачу с одинаковыми параметрами
@@ -49,6 +50,19 @@ void startNewTask(String taskId, int taskDelay) {
     requiresNetworkConnectivity: true,
     requiresCharging: false,
   ));
+}
+
+void checkIdAndStart(String taskId) {
+  final _myTaskConfig = MyTaskConfig.getTaskConfig(taskId);
+  if (_myTaskConfig.period <= 0) {
+    return;
+  }
+  if (DateTime.now().difference(_myTaskConfig.endDateTime).inSeconds >= 0) {
+    //не запускаем новую задачу
+    return;
+  }
+
+  startNewTask(taskId, _myTaskConfig.period * 100);
 }
 
 //диалог запроса периода и времени окончания и возвращает сформированный taskId
@@ -194,9 +208,22 @@ class MyTaskConfig {
   //Формируем набор параметров из строки
   factory MyTaskConfig.getTaskConfig(String taskId) {
     final _configList = taskId.split(taskIdDivider);
-    final _prefix = _configList[0];
-    final _configPeriod = int.tryParse(_configList[1]) ?? 0;
-    final _endDateTime = formater.parse(_configList[2]);
+
+    final _prefix = _configList.isNotEmpty ? _configList[0] : 'err';
+    final _configPeriod =
+        _configList.length > 1 ? int.tryParse(_configList[1]) ?? 0 : 0;
+    DateTime _endDateTime;
+    try {
+      _endDateTime = _configList.length > 2
+          ? formater.parse(_configList[2])
+          : DateTime.now().add(
+              const Duration(minutes: 30),
+            );
+    } catch (e) {
+      _endDateTime = DateTime.now().add(
+        const Duration(minutes: 30),
+      );
+    }
     return MyTaskConfig(_prefix, _configPeriod, _endDateTime);
   }
 //Формируем строку из параметров задачи: с какой страницы запущено, период перезапуска, время окончания

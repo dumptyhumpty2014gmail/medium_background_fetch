@@ -65,17 +65,13 @@ class _FirstPageState extends State<FirstPage> {
       LogManager.writeEventInLog("$taskId@$timestamp [СТРАНИЦА 1]");
     }
 
-    //завершаем задачу на всякий случай
+    //завершаем задачу
     BackgroundFetch.finish(taskId);
     //Если задача периодическая, значит это 15минутная к нам залетела, которая при конфигурировании возникает
     if (taskId == 'flutter_background_fetch') {
       return;
     }
-    if (DateTime.now().difference(_myTaskConfig.endDateTime).inSeconds >= 0) {
-      //не запускаем новую задачу
-      return;
-    }
-    startNewTask(taskId, taskDelay);
+    checkIdAndStart(taskId);
   }
 
   void _startSheduleTask1(BuildContext context) async {
@@ -83,10 +79,11 @@ class _FirstPageState extends State<FirstPage> {
     cupertinoGetTaskIdDialog(context, TaskIds.firstPageKey).then((value) {
       //print(value);
       if (value != null) {
-        final myTaskConfig = MyTaskConfig.getTaskConfig(value);
+        //final myTaskConfig = MyTaskConfig.getTaskConfig(value);
         //print(value);
         //TODO записываем в хранилище (это потом)
-        startNewTask(value, myTaskConfig.period);
+        checkIdAndStart(value);
+        //startNewTask(value, myTaskConfig.period * 100);
       }
     }).catchError((error) {
       //TODO выдаем сообщение, что произошла какая-то ошибка и не смогли запустить
