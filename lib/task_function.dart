@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vector_math/vector_math.dart' as math;
 
 import 'log_functions.dart';
@@ -20,12 +21,16 @@ abstract class TaskIds {
 void backgroundFetchFunction(HeadlessTask task) {
   final taskId = task.taskId;
   final timeout = task.timeout;
-  //final _myTaskConfig = MyTaskConfig.getTaskConfig(taskId);
+  final _myTaskConfig = MyTaskConfig.getTaskConfig(taskId);
 
   final timestamp = DateTime.now();
   //print('111111');
-
-  LogManager.writeEventInLog("$taskId@$timestamp [ФОНОВАЯ]");
+  //определяем, какая задача была запущена и выводим разные логи
+  if (_myTaskConfig.pagePrefix == TaskIds.firstPageKey) {
+    LogManager.writeEventInLog("$taskId@$timestamp [ФОНОВАЯ] Страница 1");
+  } else if (_myTaskConfig.pagePrefix == TaskIds.secondPageKey) {
+    LogManager.writeEventInLog("$taskId@$timestamp [ФОНОВАЯ] 222");
+  }
 
   //завершаем любую задачу
   BackgroundFetch.finish(taskId);
@@ -233,4 +238,14 @@ class MyTaskConfig {
       required String endTime}) {
     return '$taskPrefix$taskIdDivider$period$taskIdDivider$endTime';
   }
+}
+
+void writeIdInStorage(String keyStoradge, String taskId) async {
+  var prefs = await SharedPreferences.getInstance();
+  prefs.setString('mytask_$keyStoradge', taskId);
+}
+
+Future<String> readIdFromStoradge(String keyStoradge) async {
+  var prefs = await SharedPreferences.getInstance();
+  return prefs.getString('mytask_$keyStoradge') ?? '';
 }

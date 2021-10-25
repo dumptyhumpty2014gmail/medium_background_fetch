@@ -16,6 +16,7 @@ class FirstPage extends StatefulWidget {
 
 class _FirstPageState extends State<FirstPage> {
   List<String> _events = [];
+  String _taskIdInWork = '';
 
   @override
   void initState() {
@@ -45,10 +46,24 @@ class _FirstPageState extends State<FirstPage> {
         fetchFunctionFirst,
         //_onBackgroundFetchTimeout
       );
-      // желательно эту функцию сразу завершать, вдруг пользователь не будет запускать фоновые задачи...
+      // желательно эту функцию сразу завершать, вдруг пользователь не будет запускать фоновые задачи... ее id, как бы 999, но...
+      BackgroundFetch.stop('999');
       //можно было бы это делать перед каждым запуском task, но функция не подменяется (проверим на второй странице)
     } catch (e) {
       //print("[BackgroundFetch] ошибка при КОНФИГУРИРОВАНИИ: $e");
+    }
+    stopStartBackgroundTask();
+  }
+
+  void stopStartBackgroundTask() async {
+    final inWorkTaskId = await readIdFromStoradge(TaskIds.firstPageKey);
+    if (inWorkTaskId != '') {
+      //final _myTaskConfig = MyTaskConfig.getTaskConfig(inWorkTaskId);
+      BackgroundFetch.stop(inWorkTaskId);
+      setState(() {
+        _taskIdInWork = inWorkTaskId;
+      });
+      checkIdAndStart(inWorkTaskId);
     }
   }
 
@@ -62,7 +77,11 @@ class _FirstPageState extends State<FirstPage> {
         _events.insert(0, "$taskId@${timestamp.toString()}  [НА ЭКРАНЕ 1 SET]");
       });
     } else {
-      LogManager.writeEventInLog("$taskId@$timestamp [СТРАНИЦА 1]");
+      if (_myTaskConfig.pagePrefix == TaskIds.firstPageKey) {
+        LogManager.writeEventInLog("$taskId@$timestamp [СТРАНИЦА 1]");
+      } else if (_myTaskConfig.pagePrefix == TaskIds.secondPageKey) {
+        LogManager.writeEventInLog("$taskId@$timestamp [2 СТРАНИЦА]");
+      }
     }
 
     //завершаем задачу
@@ -76,23 +95,31 @@ class _FirstPageState extends State<FirstPage> {
 
   void _startSheduleTask1(BuildContext context) async {
     //прежде, чем запустить задачу, открываем форму, в которой выбираем период выполнения и лимит времени
-    cupertinoGetTaskIdDialog(context, TaskIds.firstPageKey).then((value) {
+    cupertinoGetTaskIdDialog(context, TaskIds.firstPageKey).then((taskId) {
       //print(value);
-      if (value != null) {
+      if (taskId != null) {
         //final myTaskConfig = MyTaskConfig.getTaskConfig(value);
         //print(value);
-        //TODO записываем в хранилище (это потом)
-        checkIdAndStart(value);
+        //TOD записываем в хранилище (это потом)
+        writeIdInStorage(TaskIds.firstPageKey, taskId);
+        checkIdAndStart(taskId);
+        setState(() {
+          _taskIdInWork = taskId;
+        });
         //startNewTask(value, myTaskConfig.period * 100);
       }
     }).catchError((error) {
-      //TODO выдаем сообщение, что произошла какая-то ошибка и не смогли запустить
+      //TOD выдаем сообщение, что произошла какая-то ошибка и не смогли запустить
       //print(error);
     });
   }
 
   void _stopTasks() {
-    BackgroundFetch.stop();
+    BackgroundFetch.stop(_taskIdInWork);
+    writeIdInStorage(TaskIds.firstPageKey, '');
+    setState(() {
+      _taskIdInWork = '';
+    });
   }
 
   void _toSecondPage() {
@@ -119,16 +146,18 @@ class _FirstPageState extends State<FirstPage> {
       ),
       body: Column(
         children: [
-          ElevatedButton(
-            onPressed: () {
-              _startSheduleTask1(context);
-            },
-            child: const Text('Запустить задачу'),
-          ),
-          ElevatedButton(
-            onPressed: _stopTasks,
-            child: const Text('Остановить задачи'),
-          ),
+          if (_taskIdInWork == '')
+            ElevatedButton(
+              onPressed: () {
+                _startSheduleTask1(context);
+              },
+              child: const Text('Запустить задачу'),
+            ),
+          if (_taskIdInWork != '')
+            ElevatedButton(
+              onPressed: _stopTasks,
+              child: const Text('Остановить задачи'),
+            ),
           ElevatedButton(
             onPressed: _toSecondPage,
             child: const Text('На вторую страницу'),
